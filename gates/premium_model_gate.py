@@ -27,7 +27,8 @@ BAD_REASONS = re.compile(r"^\s*(big|large|hard|difficult|important|better|comple
 def selected_premium(cmd, models):
     for model in models:
         pick = re.compile(
-            r"([A-Z_]*MODEL\s*=\s*['\"]?|\s-m\s+['\"]?|--model[=\s]+['\"]?|model\s*=\s*\\?['\"]?)"
+            r"([A-Z_]*MODEL\s*=\s*['\"]?|\s-m\s*['\"]?|--model[=\s]+['\"]?"
+            r"|\\?['\"]?model\\?['\"]?\s*[:=]\s*\\?['\"]?)"   # model=..., "model": "...", model: ...
             + re.escape(model), re.I)
         if pick.search(cmd):
             return model

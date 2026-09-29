@@ -24,7 +24,9 @@ def dangerous_rm(cmd):
         # Splitting on "$(" would throw away the "$" in "rm -rf $(cat list)".
         starts = [segment] + [segment[m.end():] for m in re.finditer(r"\$\(", segment)]
         for part in starts:
-            m = re.match(r"\s*(?:sudo\s+)?rm\b(.*)", part)
+            # rm, \rm, /bin/rm, command rm, sudo rm, and rm run by xargs.
+            m = re.match(r"\s*(?:sudo\s+|command\s+|exec\s+|xargs\s+(?:-\S+\s+)*)*\\?(?:/usr)?(?:/bin/)?rm\b(.*)",
+                         part)
             if m and re.search(r"[$*~]", m.group(1)):
                 return part.strip()
     return None

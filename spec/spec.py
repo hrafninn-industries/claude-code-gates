@@ -81,7 +81,7 @@ def find(arg):
     path = Path(arg)
     if path.is_file():
         return path
-    hits = [p for p in sorted(ROOT.glob(f"**/*{arg}*")) if p.suffix == ".md"]
+    hits = [p for p in sorted(ROOT.glob("**/*.md")) if arg.lower() in p.name.lower()]
     if len(hits) == 1:
         return hits[0]
     if not hits:

@@ -29,6 +29,18 @@ class SpecVerify(unittest.TestCase):
         self.assertEqual(out.returncode, 1)
         self.assertIn("only repeats", out.stdout)
 
+    def test_new_then_verify_by_lowercase_name(self):
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            env = dict(os.environ, SPEC_DIR=d)
+            spec = [sys.executable, str(ROOT / "spec" / "spec.py")]
+            made = subprocess.run(spec + ["new", "contact form"], capture_output=True, text=True, env=env)
+            self.assertEqual(made.returncode, 0, made.stdout + made.stderr)
+            out = subprocess.run(spec + ["verify", "contact_form"], capture_output=True, text=True, env=env)
+            self.assertEqual(out.returncode, 1)          # found, and failed: the template has no evidence
+            self.assertIn("no evidence", out.stdout)
+
     def test_good_spec_passes(self):
         out = verify("spec_good.md")
         self.assertEqual(out.returncode, 0, out.stdout)

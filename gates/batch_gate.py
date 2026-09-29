@@ -40,18 +40,20 @@ READ_ONLY = {
     "cat", "head", "tail", "grep", "egrep", "rg", "wc", "ls", "echo", "printf", "stat", "file",
     "sha256sum", "md5sum", "du", "df", "basename", "dirname", "realpath", "readlink", "test",
     "true", "false", "jq", "sort", "uniq", "cut", "tr", "column", "nl", "diff", "cmp", "less",
-    "ffprobe", "identify", "date", "sleep", "pgrep", "ps", "which", "type", "[", "[[", "awk",
+    "ffprobe", "identify", "date", "sleep", "pgrep", "ps", "which", "type", "[", "[[",
     "sed", "gh", "curl", "git", "cd", "pwd", "done", "fi", "for", "continue", "break",
-}
+}  # awk is left out on purpose: print > "file" and system() write from inside quotes.
 # Shell keywords that come BEFORE a command: the word after them is what gets checked.
 LEADING = {"do", "then", "else", "elif", "if", "while", "until", "!", "time"}
 WRITES = [
     r"(?<![0-9&])>\s*(?!&|/dev/null)",   # redirect into a file (2>/dev/null and 2>&1 are fine)
     r"\bsed\b[^|;&\n]*\s-i",              # sed in place
-    r"\bawk\b[^|;&\n]*-i\s*inplace",
-    r"\bgh\s+(repo|pr|issue|release)\s+(create|delete|edit|merge|close)",
-    r"\bgh\s+api\b[^|;&\n]*(-X\s*(POST|PUT|PATCH|DELETE)|--method\s+(POST|PUT|PATCH|DELETE))",
-    r"\bcurl\b[^|;&\n]*(-X\s*(POST|PUT|PATCH|DELETE)|\s-d\s|--data|-F\s|-T\s|-o\s|-O\b)",
+    r"\bsed\b[^|;&\n]*['\"/;]\s*[wW]\s+\S",  # sed script that writes a file (w file)
+    r"\bsed\b[^|;&\n]*['\"/;]\s*e\b",     # sed script that runs a command (e)
+    r"\bgh\s+(repo|pr|issue|release|gist|secret|variable|workflow)\s+\w*(create|delete|edit|merge|close|set|run)",
+    r"\bgh\s+api\b[^|;&\n]*(-X\s*(POST|PUT|PATCH|DELETE)|--method\s+(POST|PUT|PATCH|DELETE)"
+    r"|\s-[fF]\s|--field|--raw-field|--input)",
+    r"\bcurl\b[^|;&\n]*(-X\s*(POST|PUT|PATCH|DELETE)|\s-d\s|--data|-F\s|-T\s|-o\s|-O\b|--output|--upload)",
     r"\bgit\s+(push|commit|reset|checkout|clean|rm|mv|add|rebase|merge)\b",
 ]
 

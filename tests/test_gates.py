@@ -70,6 +70,11 @@ class RmGate(GateCase):
     def test_stops_rm_inside_command_substitution(self):
         self.assertStops('echo "cleaning $(rm -rf $TMPDIR/cache)"')
 
+    def test_stops_other_ways_to_call_rm(self):
+        for cmd in ('\\rm -rf "$D"', "/bin/rm -rf $D", "command rm -r ~/x", "ls | xargs -0 rm -f *.tmp"):
+            with self.subTest(cmd=cmd):
+                self.assertStops(cmd)
+
     def test_lets_literal_path_through(self):
         self.assertLetsThrough("rm /tmp/report-2026-09-29.txt")
 
@@ -157,6 +162,14 @@ class BatchGate(GateCase):
     def test_stops_hidden_write_after_do(self):
         self.assertStops("for f in a b c; do rm $f.tmp; done")
 
+    def test_stops_loops_that_write_from_inside_a_tool(self):
+        for cmd in ("for f in *.txt; do sed -n 's/a/b/w out.txt' $f; done",
+                    "for f in *.csv; do awk '{print > \"split.txt\"}' $f; done",
+                    "for n in 1 2 3; do gh api repos/o/r/issues -f title=x; done",
+                    "for u in a b; do curl -s --output $u.html https://example.com/$u; done"):
+            with self.subTest(cmd=cmd[:40]):
+                self.assertStops(cmd)
+
     def test_marked_choice_goes_through_and_is_logged(self):
         before = len(self.log_lines("model-choice"))
         self.assertLetsThrough("# MODEL: local qwen — mechanical rename, no judgement needed\n"
@@ -183,6 +196,9 @@ class PremiumModelGate(GateCase):
 
     def test_stops_short_reason(self):
         self.assertStops("# ESCALATE: stuck\nllm -m o3-pro 'plan'")
+
+    def test_stops_model_in_json_body(self):
+        self.assertStops("curl https://api.example.com/v1/chat -d '{\"model\": \"o3-pro\", \"messages\": []}'")
 
     def test_lets_grep_for_name_through(self):
         self.assertLetsThrough("grep -rn 'o3-pro' logs/")
