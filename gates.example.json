@@ -1,0 +1,17 @@
+{
+  "log_dir": "~/.claude/gates-logs",
+  "cost": {
+    "currency": "USD"
+  },
+  "batch": {
+    "premium_models": ["opus"],
+    "min_reason_chars": 25
+  },
+  "premium_model": {
+    "models": ["o3-pro", "gpt-5-pro", "claude-opus"],
+    "min_reason_chars": 25
+  },
+  "fanout": {
+    "max_agents_without_asking": 10
+  }
+}

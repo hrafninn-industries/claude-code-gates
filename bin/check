@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""check: a second, independent opinion on a claim or a plan, from a local model, in about a second.
+
+Run it before saying "done", before the next step of a plan, or whenever you are
+unsure. The model is told to look for mistakes, not to be nice, and to start its
+answer with OK or WRONG.
+
+    check "the migration is safe because every column has a default"
+    echo "longer plan ..." | check
+
+Settings (environment variables):
+    CHECK_URL    Ollama server, default http://localhost:11434
+    CHECK_MODEL  model name, default qwen3-coder:30b
+    CHECK_API    "ollama" (default) or "openai" for any OpenAI-compatible server
+    CHECK_KEY    API key for an OpenAI-compatible server, if it needs one
+    CHECK_TIMEOUT seconds, default 60
+
+Exit codes: 0 answer printed, 1 nothing to check, 2 the model could not be reached.
+"""
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+
+URL = os.environ.get("CHECK_URL", "http://localhost:11434").rstrip("/")
+MODEL = os.environ.get("CHECK_MODEL", "qwen3-coder:30b")
+API = os.environ.get("CHECK_API", "ollama").lower()
+KEY = os.environ.get("CHECK_KEY", "")
+TIMEOUT = float(os.environ.get("CHECK_TIMEOUT", "60"))
+
+PROMPT = (
+    "You are a sceptical, independent reviewer. Your only job is to find mistakes, wrong "
+    "assumptions or traps in the claim or plan below. Do not be polite.\n"
+    "Start with OK (if it is sound) or WRONG (if something is off), then one sentence why. "
+    "At most 50 words.\n\nCLAIM/PLAN:\n"
+)
+
+
+def ask(claim):
+    if API == "openai":
+        url = URL + "/v1/chat/completions"
+        body = {"model": MODEL, "messages": [{"role": "user", "content": PROMPT + claim}]}
+    else:
+        url = URL + "/api/generate"
+        body = {"model": MODEL, "prompt": PROMPT + claim, "stream": False, "keep_alive": "4h"}
+    headers = {"Content-Type": "application/json"}
+    if KEY:
+        headers["Authorization"] = f"Bearer {KEY}"
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    reply = json.loads(urllib.request.urlopen(req, timeout=TIMEOUT).read())
+    if API == "openai":
+        return reply["choices"][0]["message"]["content"]
+    return reply.get("response", "")
+
+
+def main():
+    claim = " ".join(sys.argv[1:]).strip()
+    if not claim and not sys.stdin.isatty():
+        claim = sys.stdin.read().strip()
+    if not claim:
+        print('Nothing to check. Usage: check "claim or plan"', file=sys.stderr)
+        return 1
+    started = time.time()
+    try:
+        answer = ask(claim).strip() or "(empty answer)"
+    except (urllib.error.URLError, OSError, ValueError, KeyError) as e:
+        print(f"check could not reach {MODEL} at {URL}: {e}", file=sys.stderr)
+        print("Is the server running? Set CHECK_URL / CHECK_MODEL if it lives elsewhere.", file=sys.stderr)
+        return 2
+    print(answer)
+    print(f"\n[check · {MODEL} · {time.time() - started:.1f}s]")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
